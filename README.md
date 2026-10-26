@@ -6,11 +6,11 @@ Es una página estática que se abre en el navegador (también en el móvil, com
 
 ## Qué tiene
 
-- **Inicio:** lo urgente de la clase (exámenes de la semana, quejas abiertas, correos sin respuesta, plazos de notas) y el botón **Enviar parte a la delegación**.
+- **Inicio:** los primeros pasos del primer día (exámenes oficiales al calendario, contraseña, copia compartida con el compañero y el portal en el móvil como una app), lo urgente de la clase (exámenes de la semana, quejas abiertas, acuerdos vencidos, correos sin respuesta, plazos de notas) y el botón **Enviar parte a la delegación**.
 - **Horario:** el oficial de cada curso, «¿Dónde está ahora?» y el horario y los huecos libres de cada profesor.
 - **Exámenes:** las fechas oficiales del grado, los parciales y entregas que apuntes, el termómetro de carga y el calendario académico con los festivos.
 - **Asignaturas:** la guía docente de cada una (carpeta `guias/`), los criterios y la calculadora de notas.
-- **Quejas:** el tablero de la clase y el informe.
+- **Quejas:** el tablero de la clase, los **acuerdos con el profesorado** (lo que promete un profesor y para cuándo, con aviso si vence y el recordatorio preparado) y el informe.
 - **Correos:** plantillas para el profesorado, seguimiento de respuestas y recordatorios.
 - **Normativa:** plazos de notas, revisión y reclamación según la normativa de evaluación de la UCJC.
 
@@ -27,4 +27,4 @@ Es una página estática que se abre en el navegador (también en el móvil, com
 
 Sustituye `index.html` y `sw.js` por la nueva versión (y la carpeta `guias/` si cambian las guías docentes). Los datos de los delegados no se tocan: están en sus navegadores, no en el repositorio.
 
-Versión 1 · 26 de octubre de 2026.
+Versión 1.1 · 26 de octubre de 2026.

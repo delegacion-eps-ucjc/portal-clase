@@ -513,6 +513,25 @@ main .rpaper a:not(.btn){color:#96234a;word-break:break-all}
 .second{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px}
 .hero:has(.tabs[hidden]){padding-bottom:28px}
 .ptsel textarea{padding:7px 9px;font-size:14px;line-height:1.4;resize:vertical;field-sizing:content;min-height:2.4em}
+/* portal de clase: primeros pasos */
+.pasosp{margin-bottom:16px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--brand)}
+.pasosp.done{border-top-color:var(--ok)}
+.pbar{height:6px;background:var(--surface-2);overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--brand);transition:width .3s ease}
+.pasos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));column-gap:28px}
+.paso{display:flex;gap:12px;align-items:flex-start;padding:14px 0 6px;border-top:1px solid var(--line);min-width:0}
+.paso .pn{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:700 13px/1 var(--sans);background:var(--brand-50);color:var(--brand)}
+.paso.ok .pn{background:var(--ok-bg);color:var(--ok)}
+.paso .main{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.paso .main>b{font-size:15px;font-weight:600}
+.paso.ok .main>b{color:var(--muted)}
+.paso .main p{margin:0}
+.paso[data-paso="app"]{grid-column:1/-1}
+.sos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px 28px;align-items:start}
+.sobox{border-left:3px solid var(--brand-150);padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.sobox>b{font-size:13px}
+.paso .steps{font-size:13px;gap:4px}
+.paso .url{font:600 12.5px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:2px 6px;overflow-wrap:anywhere}
 
 </style>
 
@@ -1195,7 +1214,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 const BUILD="web";
 const EDICION="clase";
 const LOGO_DEFAULT="";
-const LOCAL_VERSION="1 · 26 de octubre de 2026";
+const LOCAL_VERSION="1.1 · 26 de octubre de 2026";
 /* ===== núcleo: datos, utilidades, editor genérico ===== */
 /* edición: «delegado» (el portal de Fran) o «clase» (el portal para los delegados y subdelegados de cada clase) */
 const ED=typeof EDICION!=='undefined'?EDICION:'delegado';
@@ -1211,7 +1230,7 @@ const TABS=ED==='clase'?['inicio','horario','calendario','asignaturas','incidenc
 
 const D={};COLS.forEach(c=>D[c]=[]);
 const LOADED={};COLS.forEach(c=>LOADED[c]=false);
-const CFG_DEF={firma:'',alumnos:0,lugar:'Madrid',sub:'',logo:'',logoW:0,logoH:0,anonimizar:true,miGrado:'',miCurso:0,guias2627:0,aulas:{},copiaFecha:'',cargoCurso:'',cargoGrado:'',delegacionEmail:''};
+const CFG_DEF={firma:'',alumnos:0,lugar:'Madrid',sub:'',logo:'',logoW:0,logoH:0,anonimizar:true,miGrado:'',miCurso:0,guias2627:0,aulas:{},copiaFecha:'',cargoCurso:'',cargoGrado:'',delegacionEmail:'',pasos:{},pasosFin:0};
 let CFG=Object.assign({},CFG_DEF),CFG_LOADED=false;
 let db=null,sample=null,downloads=null,canWrite=true,status='loading';
 let filter='todos',tab='inicio',editing=null;
@@ -1366,9 +1385,10 @@ function fieldVal(f,item){
 }
 function formHTML(col,item,title){
   const sch=S[col];
-  let h=`<form class="editor" data-col="${col}" data-id="${esc(item.id||'')}" novalidate><h3>${esc(title||((item.id?'Editar ':'Nueva ')+sch.one))}</h3><div class="form">`;
+  let h=`<form class="editor" data-col="${col}" data-id="${esc(item.id||'')}" novalidate><h3>${esc(title||((item.id?'Editar ':/^(examen|contacto|compromiso|acuerdo|material|préstamo|participante|evento|resumen)\b/.test(sch.one)?'Nuevo ':'Nueva ')+sch.one))}</h3><div class="form">`;
   for(const f of sch.fields){
     const id=`f-${col}-${f.k}`,v=fieldVal(f,item);
+    if(f.type==='ambito'&&Object.keys(AMB).length<2){h+=`<input type="hidden" id="${id}" name="${f.k}" value="${esc(AMB[v]?v:(Object.keys(AMB)[0]||'curso'))}">`;continue}
     if(f.type==='check'){h+=`<label class="f" for="${id}" style="flex-direction:row;align-items:center;gap:10px;align-self:end;padding-bottom:10px"><input type="checkbox" id="${id}" name="${f.k}" ${v?'checked':''}><span style="font-size:14px;color:var(--ink)">${f.label}</span></label>`;continue}
     h+=`<label class="f${(f.type==='textarea'||f.wide)?' wide':''}" for="${id}"><span>${f.label}</span>`;
     if(f.type==='textarea')h+=`<textarea id="${id}" name="${f.k}" rows="${f.rows||3}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
@@ -1669,7 +1689,7 @@ function proximos(t,n){
 }
 function proximosHTML(soon){
   return soon.length?'<div class="list">'+soon.map(s=>{const lt=days(s.d)<0,ca=!s.x.id;const chip=s.k==='Examen'||s.k==='Festivo'?'bad':s.k==='Reunión'||s.k==='Curso'?'':'warn';
-    return `<div class="it click" data-act="go" data-t="${s.go}"${s.x.id?` data-id="${esc(s.x.id)}"`:''}><div class="main"><div class="t">${esc(s.title)}</div><div class="m"><span class="chip ${chip}">${esc(s.k)}</span>${s.x.ambito?ambChip(s.x.ambito):''}<span class="date">${esc(s.end?caRango(s.ini,s.end):fmt(s.d))}</span><span class="${lt?'late':''}">${s.end&&s.ini<today()?'hasta el '+esc(fmt(s.end)):(lt?'vencida, ':'')+esc(rel(s.d))}</span></div></div></div>`}).join('')+'</div>':'<div class="list"><div class="empty"><b>Semana despejada</b>Nada en los próximos 14 días.</div></div>';
+    return `<div class="it click" data-act="go" data-t="${s.go}"${s.x.id?` data-id="${esc(s.x.id)}"`:''}${s.st?` data-state='${esc(JSON.stringify(s.st))}'`:''}><div class="main"><div class="t">${esc(s.title)}</div><div class="m"><span class="chip ${chip}">${esc(s.k)}</span>${s.x.ambito&&(ED!=='clase'||AMB.grado)?ambChip(s.x.ambito):''}<span class="date">${esc(s.end?caRango(s.ini,s.end):fmt(s.d))}</span><span class="${lt?'late':''}">${s.end&&s.ini<today()?'hasta el '+esc(fmt(s.end)):(lt?'vencida, ':'')+esc(rel(s.d))}</span></div></div></div>`}).join('')+'</div>':'<div class="list"><div class="empty"><b>Semana despejada</b>Nada en los próximos 14 días.</div></div>';
 }
 function thermoSVG(pct,cls){
   const col={ok:'var(--ok)',mid:'#e2b80d',high:'#f0a43c',crit:'var(--heat3)'}[cls];
@@ -2761,12 +2781,13 @@ function calEvents(o){
   if(o.plazos&&!o.clase)D.evaluaciones.forEach(e=>evalPlazos(e).items.filter(i=>i.d>=t).forEach(i=>E.push({uid:'pl-'+e.id+'-'+i.k,title:`${i.lbl}: ${e.asignatura}`,date:i.d,desc:i.msg+' ('+i.art+')'})));
   if(o.festivos)caFechas(t,CALACAD.hasta).forEach(x=>E.push({uid:'ca-'+x.d+'-'+slug(x.t),title:x.t,date:x.d,end:x.end||'',desc:CALACAD.fuente,noAlarm:true}));
   if(o.compromisos&&!o.clase)D.compromisos.filter(c=>c.estado==='pendiente'&&c.fecha&&c.fecha>=t).forEach(c=>E.push({uid:'co-'+c.id,title:'Compromiso: '+c.que,date:c.fecha,desc:c.quien?'Se comprometió: '+c.quien:''}));
+  if(o.acuerdos&&!o.clase)D.compromisos.filter(c=>c.estado==='pendiente'&&c.fecha&&c.fecha>=t).forEach(c=>{const pr=contact(c.contacto);E.push({uid:'acu-'+c.id,title:'Acuerdo: '+c.que,date:c.fecha,desc:[pr?'Lo prometió: '+(pr.nombreCompleto||pr.nombre):'',c.asignatura?'Asignatura: '+c.asignatura:''].filter(Boolean).join('\n')})});
   return E;
 }
 function icsPanelHTML(){
   return `<section class="editor" id="ics-panel"><h3>Exportar a tu calendario</h3>
     <p class="small muted" style="margin:0">Descarga un archivo .ics y ábrelo para añadir los eventos a Google Calendar, Outlook o el calendario del móvil, con aviso incluido. Si cambian las fechas, vuelve a descargarlo.</p>
-    <div class="row">${[['pruebas','Exámenes y entregas',1],...(ED==='clase'?[]:[['reuniones','Reuniones convocadas',1]]),['tareas','Mis tareas con fecha',0],['plazos','Plazos de notas y revisiones',1],['festivos','Festivos y fechas del calendario académico',1],...(ED==='clase'?[]:[['compromisos','Compromisos de la universidad',0]])].map(([k,l,on])=>`<label class="row small" for="ics-${k}" style="gap:6px"><input type="checkbox" id="ics-${k}" ${on?'checked':''}> ${l}</label>`).join('')}</div>
+    <div class="row">${[['pruebas','Exámenes y entregas',1],...(ED==='clase'?[]:[['reuniones','Reuniones convocadas',1]]),['tareas','Mis tareas con fecha',0],['plazos','Plazos de notas y revisiones',1],['festivos','Festivos y fechas del calendario académico',1],...(ED==='clase'?[['acuerdos','Acuerdos con el profesorado',1]]:[['compromisos','Compromisos de la universidad',0]])].map(([k,l,on])=>`<label class="row small" for="ics-${k}" style="gap:6px"><input type="checkbox" id="ics-${k}" ${on?'checked':''}> ${l}</label>`).join('')}</div>
     <div class="form"><label class="f" for="ics-aviso"><span>Aviso</span><select id="ics-aviso"><option value="dia">El día antes</option><option value="horas">Unas horas antes</option><option value="">Sin aviso</option></select></label>
     <label class="row small" for="ics-clase" style="gap:6px;align-self:end;padding-bottom:10px"><input type="checkbox" id="ics-clase"> Versión para compartir con la clase (solo exámenes y entregas, sin notas)</label></div>
     <div class="row"><button class="btn primary" data-act="icsGo">Descargar calendario</button><button class="btn" data-act="icsClose">Cerrar</button><span class="small muted" id="ics-n"></span></div></section>`;
@@ -2774,7 +2795,7 @@ function icsPanelHTML(){
 ACT.icsOpen=()=>{const p=$('ics-slot');if(!p)return;p.innerHTML=icsPanelHTML();p.scrollIntoView({block:'nearest',behavior:'smooth'})};
 ACT.icsClose=()=>{const p=$('ics-slot');if(p)p.innerHTML=''};
 ACT.icsGo=async()=>{
-  const o={};['pruebas','reuniones','tareas','plazos','festivos','compromisos','clase'].forEach(k=>{const c=$('ics-'+k);o[k]=!!(c&&c.checked)});
+  const o={};['pruebas','reuniones','tareas','plazos','festivos','compromisos','acuerdos','clase'].forEach(k=>{const c=$('ics-'+k);o[k]=!!(c&&c.checked)});
   const E=calEvents(o);if(!E.length){$('ics-n').textContent='No hay eventos futuros con esas opciones.';return}
   const m=miPlan(),cl=`${m.c}º ${GCORTO[m.g]}`;
   const name=o.clase?(ED==='clase'?'calendario-'+slug(cl):'calendario-2o-curso'):(ED==='clase'?'calendario-portal-clase':'calendario-delegado');
@@ -3023,7 +3044,7 @@ MODS.asignaturas={
         ${inc.length?'<div class="list">'+inc.map(i=>`<div class="it click" data-act="go" data-t="incidencias" data-id="${esc(i.id)}"><div class="main"><div class="t">${esc(i.titulo)}</div><div class="m"><span class="chip">${esc(KLABEL[i.columna]||'Nueva queja')}</span>${i.urgente?'<span class="chip urg">Urgente</span>':''}</div></div></div>`).join('')+'</div>':'<p class="small muted" style="margin:0">Ninguna queja sobre esta asignatura.</p>'}</section>
       ${this.horPanel(k,g,true,hor)}
       <section class="panel stack"><h3>Correos enviados</h3>${env.length?'<div class="list">'+env.slice(0,12).map(envItemHTML).join('')+'</div>':'<p class="small muted" style="margin:0">Cuando redactes un correo, pulsa «Registrar como enviado» y aparecerá aquí. Si en una semana no te contestan, el portal te avisa.</p>'}
-        ${com.length?`<h3 style="margin-top:8px">Compromisos</h3><div class="list">${com.map(c=>`<div class="it"><div class="main"><div class="t">${esc(c.que)}</div><div class="m"><span class="chip ${c.estado==='cumplido'?'ok':c.estado==='incumplido'?'bad':'warn'}">${esc(c.estado)}</span>${c.fecha?`<span class="date">${esc(fmt(c.fecha))}</span>`:''}</div></div></div>`).join('')}</div>`:''}</section>`
+        ${asComHTML(com,n,p)}</section>`
       :`<div class="stack"><section class="panel stack"><h3>Exámenes, quejas y correos</h3><p class="small muted" style="margin:0">Hay una asignatura con el mismo nombre en tu grado. Lo que tengas apuntado como «${esc(n)}» (exámenes, quejas, horario y correos) sale en <a href="#asignaturas" data-act="asOpen" data-k="${esc(pref.id)}">su ficha de ${esc(GCORTO[pref.g])}</a>.</p>${exFichaHTML(k)}${g?this.fechasGuia(g):''}</section>${this.horPanel(k,g,false,[])}</div>`}
     </div></div>`;
   },
@@ -3141,6 +3162,8 @@ ACT.asHSem=el=>{MODS.asignaturas.state.hsem=Number(el.dataset.v)||0;renderAll()}
 ACT.hueco=el=>setTab('redactar',{state:{tpl:'tutoria',normPrefill:{franjas:'el '+el.dataset.f}}});
 ACT.horCopy=()=>{const st=MODS.asignaturas.state,s=st.hsem||semActual(),m=miPlan(),B=miHorario(s),L=[];for(let d=1;d<=5;d++){const X=B.filter(x=>x.d===d).sort((a,b)=>hmin(a.a)-hmin(b.a));if(X.length)L.push(`*${DIAS[d]}*\n`+X.map(x=>`• ${x.a}–${x.b} ${x.n}${x.aula?' ('+x.aula+')':''}`).join('\n'))}copyText(`🗓️ *Horario de ${m.c}º ${GCORTO[m.g]} · ${semTxt(s)}*\n\n`+L.join('\n\n'))};
 
+/* compromisos de la ficha de una asignatura (el portal de clase los enseña como «Acuerdos con el profesorado») */
+function asComHTML(com){return com.length?`<h3 style="margin-top:8px">Compromisos</h3><div class="list">${com.map(c=>`<div class="it"><div class="main"><div class="t">${esc(c.que)}</div><div class="m"><span class="chip ${c.estado==='cumplido'?'ok':c.estado==='incumplido'?'bad':'warn'}">${esc(c.estado)}</span>${c.fecha?`<span class="date">${esc(fmt(c.fecha))}</span>`:''}</div></div></div>`).join('')}</div>`:''}
 /* registro de correos enviados desde Redactar */
 ACT.mailSent=async()=>{
   const R=MODS.redactar,v=R.values(),m=R.cur&&R.cur.mail;if(!m)return;
@@ -3243,7 +3266,8 @@ function searchAll(q){
   asTodas().forEach(k=>{const g=guia(k),n=asNombre(k),pr=profesAsig(k).map(p=>p.n);add('Asignaturas',n,[g?`${GCORTO[g.g]} ${g.c}º`:'',pr.slice(0,2).join(', ')].filter(Boolean).join(' · '),{t:'asignaturas',state:{view:'fichas',sel:k}},[n,g?g.cod:'',g?GCORTO[g.g]:'',pr.join(' ')].join(' '))});
   Object.values(PROFS).forEach(p=>{const L=CLASES.filter(x=>x.profs.some(q=>q[1]===p.e));if(!L.length)return;const A=[...new Set(L.map(x=>x.n))];add('Horarios del profesorado','Horario de '+p.n,A.slice(0,3).join(', ')+(A.length>3?'…':''),ED==='clase'?{t:'horario',state:{view:'prof'},hv:p.e}:{t:'directorio',state:{view:'horarios'},hv:p.e},['horario donde esta',p.n,A.join(' ')].join(' '))});
   D.reuniones.forEach(r=>add('Reuniones',r.titulo,[r.organo,fmt(r.fecha)].filter(Boolean).join(' · '),{t:'actas',id:r.id,state:{view:'reuniones'}},[r.titulo,r.organo,r.orden,r.acuerdos,r.lugar].join(' ')));
-  D.compromisos.forEach(c=>add('Compromisos',c.que,[c.quien,c.estado].filter(Boolean).join(' · '),{t:'actas',id:c.id,state:{view:'compromisos'}},[c.que,c.quien,c.notas].join(' ')));
+  if(ED==='clase')D.compromisos.forEach(c=>{const pr=(contact(c.contacto)||{}).nombre||'';add('Acuerdos con el profesorado',c.que,[pr,c.asignatura,c.fecha?'para el '+fmt(c.fecha):''].filter(Boolean).join(' · '),{t:'incidencias',id:c.id,state:{view:'acuerdos'}},['acuerdo promesa',c.que,pr,c.asignatura,c.notas].join(' '))});
+  else D.compromisos.forEach(c=>add('Compromisos',c.que,[c.quien,c.estado].filter(Boolean).join(' · '),{t:'actas',id:c.id,state:{view:'compromisos'}},[c.que,c.quien,c.notas].join(' ')));
   D.tareas.forEach(x=>add('Tareas',x.titulo,x.fecha?fmt(x.fecha):'',{t:'inicio',id:x.id},[x.titulo,x.notas].join(' ')));
   D.contactos.forEach(c=>add(ED==='clase'?'Profesorado':'Mi directorio',c.nombreCompleto||c.nombre,[c.cargo,(c.asignaturas||[]).join(', '),c.email].filter(Boolean).join(' · '),ED==='clase'?{t:'redactar',id:c.id,state:{view:'profes'}}:{t:'directorio',id:c.id,state:{view:'mios'}},[c.nombre,c.nombreCompleto,c.cargo,c.email,(c.asignaturas||[]).join(' ')].join(' ')));
   D.org.forEach(o=>add('Quién es quién',o.nombre,[o.cargo,o.email].filter(Boolean).join(' · '),{t:'directorio',id:o.id,state:{view:'org',q:''}},[o.nombre,o.cargo,o.email,(o.asignaturas||[]).join(' ')].join(' ')));
@@ -3302,7 +3326,7 @@ function resumenSemanal(mon){
   const ex=ev.filter(e=>e.tipo==='Examen'),en=ev.filter(e=>e.tipo!=='Examen');
   const re=D.reuniones.filter(r=>r.estado==='Convocada'&&r.fecha>=mon&&r.fecha<=sun).sort((a,b)=>String(a.fecha).localeCompare(b.fecha));
   const ac=D.reuniones.filter(r=>r.estado==='Celebrada'&&r.fecha>=addDays(t,-14)&&r.fecha<=t).flatMap(r=>lines(r.acuerdos));
-  const co=D.compromisos.filter(c=>c.estado==='pendiente').sort((a,b)=>String(a.fecha||'9').localeCompare(b.fecha||'9')).slice(0,5);
+  const co=(ED==='clase'?[]:D.compromisos).filter(c=>c.estado==='pendiente').sort((a,b)=>String(a.fecha||'9').localeCompare(b.fecha||'9')).slice(0,5);
   const pl=[];D.evaluaciones.forEach(e=>evalPlazos(e).items.filter(i=>i.k==='rec'||(i.s==='bad'&&i.k==='prov')).forEach(i=>pl.push(`${e.asignatura}: ${i.lbl.toLowerCase()}${i.k==='rec'?' hasta el '+fd(i.d):''}`)));
   const sec=(t,arr)=>arr.length?`\n*${t}*\n${arr.map(x=>'• '+x).join('\n')}\n`:'';
   const r1=parse(mon),r2=parse(sun);
@@ -3613,7 +3637,8 @@ MODS.ajustes={
       <div class="stack">${isLocal()?'<section class="panel stack" id="aj-pass"></section><section class="panel stack" id="aj-sync"></section>':'<section class="panel stack" id="aj-ext"></section>'}<section class="panel stack" id="aj-bk"></section></div></div>`;
     for(const k in AJSIG)delete AJSIG[k];
     this.refresh(true);
-    if(AJ.bkFocus){AJ.bkFocus=0;setTimeout(()=>{const b=$('aj-bk');if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash')}},80)}
+    const fo=AJ.bkFocus?'aj-bk':AJ.foco;AJ.bkFocus=0;AJ.foco='';
+    if(fo)setTimeout(()=>{const b=$(fo);if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash')}},80);
   },
   refresh(force){
     if(!$('aj-datos'))return;
@@ -4290,7 +4315,7 @@ ACT.clEmpezar=async el=>{
   if(!await saveCfg({firma:String(b.nombre||'').trim(),miGrado:g,miCurso:c,cargoCurso:cargo,cargoGrado:cargoNom(cg)?cg:'',guias2627:1})){el.disabled=false;return}
   heroSub();
   const k=await clProfesores();
-  tab='inicio';renderAll();
+  tab='inicio';renderAll();window.scrollTo({top:0});
   toast(`Listo: tu portal de ${clClase()} está preparado${k?` (con ${k} ${k===1?'profesor':'profesores'} de tu curso)`:''}`);
 };
 /* mientras no sepa de qué clase eres, el portal enseña la bienvenida */
@@ -4316,6 +4341,7 @@ function clAlertas(){
     {cls:op.length?(urg?'bad':'warn'):'ok',n:op.length,txt:op.length?`${op.length===1?'queja sin resolver':'quejas sin resolver'}${urg?` · ${urg} ${urg===1?'urgente':'urgentes'}`:''}${neg?` · ${neg} en negociación`:''}`:'Ninguna queja abierta',t:'incidencias'},
     {cls:red?'bad':'ok',n:red,txt:red?`${red===1?'semana':'semanas'} en rojo en los próximos 2 meses${firstRed?` · la primera, ${fmt(firstRed)}`:''}`:'Ninguna semana con más de 2 pruebas',t:'calendario',st:{view:'mio'}},
     {cls:plz?'bad':'ok',n:plz,txt:plz?`${plz===1?'plazo de notas o revisión incumplido':'plazos de notas o revisiones incumplidos'}`:'Todos los plazos de notas en orden',t:'calendario',st:{view:'mio'}},
+    ...acuAlerta(),
     ...(p||e?[{cls:p?'bad':'warn',n:p||e,txt:p?`${p===1?'correo sin respuesta':'correos sin respuesta'} desde hace más de una semana`:`${e===1?'correo esperando respuesta':'correos esperando respuesta'}`,t:'redactar',st:{view:'enviados'}}]:[]),
     ...copiaAlerta(),
     up?{cls:dup>30?'warn':'ok',n:dup===0?'Hoy':dup,txt:dup===0?'has mandado el parte a la delegación de Escuela':`${dup===1?'día':'días'} desde tu último parte a la delegación de Escuela`,t:'inicio',st:{view:'parte'}}
@@ -4335,7 +4361,7 @@ MODS.inicio={
         <button class="btn" data-act="go" data-t="redactar" data-state='{"view":"plantillas","tpl":"revision"}'>Escribir a un profesor</button>
         <button class="btn" data-act="go" data-t="normativa">Comprobar un plazo</button>
       </div></div>
-      <div id="slot-alerts"></div>
+      <div id="slot-pasos"></div><div id="slot-alerts"></div>
       <div class="grid g2" style="margin-top:16px">
         <section class="panel stack" id="slot-thermo"></section>
         <section class="panel stack"><div class="row" style="justify-content:space-between"><h3>Próximos 14 días</h3><button class="btn ghost sm" data-act="go" data-t="calendario" data-state='{"view":"mio"}'>Ver calendario</button></div><div id="slot-soon"></div></section>
@@ -4354,6 +4380,7 @@ MODS.inicio={
     if(!$('slot-alerts'))return;
     if(!ready()){$('slot-alerts').innerHTML=loadingHTML();return}
     const t=today(),mon=monday(t),A=clAlertas();
+    pasosPaint();
     $('slot-alerts').innerHTML='<div class="alerts">'+A.map(a=>`<button class="alert ${a.cls}" data-act="go" data-t="${a.t}"${a.st?` data-state='${esc(JSON.stringify(a.st))}'`:''}><b>${esc(a.n)}</b><span>${esc(a.txt)}</span></button>`).join('')+'</div>';
     const th=thermometer(),wk=weekLoad(mon),cnt=k=>wk.filter(e=>e.tipo===k).length,m=miPlan();
     let maxW=null,maxN=0;for(let w=0;w<16;w++){const x=addDays(mon,7*w),n=weekLoad(x).length;if(n>maxN){maxN=n;maxW=x}}
@@ -4362,7 +4389,7 @@ MODS.inicio={
       <p class="small" style="margin:0">Esta semana: <b>${cnt('Examen')}</b> exámenes, <b>${cnt('Entrega')}</b> entregas, <b>${cnt('Práctica')+cnt('Presentación')}</b> prácticas o presentaciones.</p>
       ${maxW&&maxN>1?`<p class="small muted" style="margin:0">Semana más cargada: ${esc(fmt(maxW))} (${maxN} pruebas).</p>`:''}
       ${D.evaluaciones.length?'':'<p class="small muted" style="margin:0">Añade los exámenes oficiales y las entregas en Exámenes para que el termómetro se mueva.</p>'}</div></div>`;
-    $('slot-soon').innerHTML=proximosHTML(proximos(t,14));
+    $('slot-soon').innerHTML=proximosHTML(proximos(t,14).concat(acuProximos(t,14)).sort((a,b)=>String(a.d).localeCompare(b.d)));
     const T=vis(D.tareas).slice().sort((a,b)=>(!!a.hecha-!!b.hecha)||String(a.fecha||'9').localeCompare(String(b.fecha||'9')));
     $('slot-tasks').innerHTML=T.length?'<div class="list">'+T.slice(0,12).map(x=>{const lt=!x.hecha&&x.fecha&&days(x.fecha)<0;return `<div class="it${x.hecha?' done':''}" data-focus="${esc(x.id)}"><input type="checkbox" data-chg="taskDone" data-id="${esc(x.id)}" ${x.hecha?'checked':''} ${canWrite?'':'disabled'} aria-label="Hecha"><div class="main"><div class="t">${esc(x.titulo)}</div><div class="m">${AMB.grado?ambChip(x.ambito):''}${x.fecha?`<span class="date">${esc(fmt(x.fecha))}</span><span class="${lt?'late':''}">${x.hecha?'':esc(rel(x.fecha))}</span>`:''}</div></div>${canWrite?`<button class="btn ghost sm" data-act="edit" data-col="tareas" data-id="${esc(x.id)}">Editar</button>`:''}</div>`}).join('')+'</div>':'<div class="list"><div class="empty"><b>Sin tareas</b>Apunta aquí lo que tienes pendiente como representante.</div></div>';
   }
@@ -4589,6 +4616,236 @@ ACT.syCode=async()=>{
 ACT.syInv=async()=>{const L=LOCALAPI();if(!L)return;AJ.invBusy=true;paintAj();try{AJ.inv=await L.sync.invite()}catch(e){AJ.syMsg=(e&&e.message)||String(e)}AJ.invBusy=false;paintAj()};
 ACT.syInvCopy=()=>copyText(AJ.inv,$('sy-inv'));
 ACT.syInvHide=()=>{AJ.inv='';paintAj()};
+/* ===== Portal de clase · acuerdos con el profesorado: lo que promete un profesor, para cuándo, aviso si vence y recordatorio preparado ===== */
+const ACU_DONDE=['En una tutoría','En clase','En una reunión','Por correo','En otro sitio'];
+S.compromisos={one:'acuerdo con el profesorado',fields:[
+  {k:'que',label:'Qué ha prometido',type:'text',req:true,wide:true,ph:'Publicar las notas del parcial'},
+  {k:'contacto',label:'Profesor o profesora',type:'contactoSel'},
+  {k:'asignatura',label:'Asignatura',type:'asig'},
+  {k:'fecha',label:'Para cuándo',type:'date',req:true,def:()=>today(7)},
+  {k:'dicho',label:'Cuándo lo dijo',type:'date',def:()=>today()},
+  {k:'donde',label:'Dónde lo dijo',type:'select',opts:ACU_DONDE},
+  {k:'estado',label:'Estado',type:'select',opts:[['pendiente','Pendiente'],['cumplido','Cumplido'],['incumplido','No lo ha cumplido']],def:'pendiente'},
+  {k:'ambito',label:'Cargo',type:'ambito'},
+  {k:'notas',label:'Notas',type:'textarea',rows:2,ph:'Lo que dijo exactamente, quién más estaba…'}
+]};
+if(typeof COL_LBL!=='undefined')COL_LBL.compromisos=['acuerdo con el profesorado','acuerdos con el profesorado'];
+/* el campo «Profesor o profesora» es un desplegable con tu profesorado */
+(function(){
+  const _f=formHTML;
+  formHTML=function(col,item,title){
+    let h=_f(col,item,title);
+    if(col==='compromisos'){
+      const v=item.contacto||'',L=D.contactos.slice().sort((a,b)=>String(a.nombreCompleto||a.nombre).localeCompare(b.nombreCompleto||b.nombre,'es'));
+      h=h.replace(/<input id="f-compromisos-contacto"[^>]*>/,`<select id="f-compromisos-contacto" name="contacto" data-chg="acuProf"><option value="">${L.length?'Elige un profesor':'Sin profesores todavía'}</option>${L.map(c=>`<option value="${esc(c.id)}"${c.id===v?' selected':''}>${esc(c.nombreCompleto||c.nombre)}${(c.asignaturas||[]).length?' · '+esc(c.asignaturas.join(', ')):''}</option>`).join('')}</select>`);
+    }
+    return h;
+  };
+})();
+/* al elegir profesor, si la asignatura está vacía se pone la suya */
+CHG.acuProf=el=>{const c=contact(el.value),a=$('f-compromisos-asignatura');if(c&&a&&!a.value&&(c.asignaturas||[]).length)a.value=c.asignaturas[0]};
+function acuProfe(x){const c=contact(x.contacto);return c?(c.nombreCompleto||c.nombre):(x.quien||'')}
+function acuVencido(x){return x.estado==='pendiente'&&!!x.fecha&&x.fecha<today()}
+function acuVencidos(){return vis(D.compromisos).filter(acuVencido)}
+function acuRecs(x){return Array.isArray(x.recordatorios)?x.recordatorios:[]}
+function acuAlerta(){
+  const V=acuVencidos(),n=V.length;if(!n)return [];
+  const rec=V.filter(x=>{const r=acuRecs(x);return r.length&&days(r[r.length-1])>=-7}).length;
+  return [{cls:rec<n?'bad':'warn',n,txt:`${n===1?'acuerdo del profesorado vencido':'acuerdos del profesorado vencidos'} sin cumplir${rec?(n===1?' · ya se lo has recordado':` · ${rec} ya ${rec===1?'recordado':'recordados'}`):''}`,t:'incidencias',st:{view:'acuerdos'}}];
+}
+/* los que vencen en los próximos días salen también en «Próximos 14 días» de Inicio */
+function acuProximos(t,n){return vis(D.compromisos).filter(x=>x.estado==='pendiente'&&x.fecha&&x.fecha>=t&&days(x.fecha)<=n).map(x=>({k:'Acuerdo',x,d:x.fecha,title:`${x.que}${acuProfe(x)?' · '+acuProfe(x):''}`,go:'incidencias',st:{view:'acuerdos'}}))}
+function acuDichoTxt(x){
+  const d=parse(x.dicho)?`el ${fmt(x.dicho)}`:'',w=x.donde&&x.donde!=='En otro sitio'?x.donde.toLowerCase():'';
+  return [d,w].filter(Boolean).join(' · ');
+}
+function acuChip(x){return x.estado==='cumplido'?'<span class="chip ok">Cumplido</span>':x.estado==='incumplido'?'<span class="chip bad">No lo ha cumplido</span>':acuVencido(x)?'<span class="chip bad">Vencido</span>':'<span class="chip warn">Pendiente</span>'}
+function acuItemHTML(x){
+  const venc=acuVencido(x),R=acuRecs(x),dt=acuDichoTxt(x),q=x.incidencia?D.incidencias.find(i=>i.id===x.incidencia):null;
+  return `<div class="it" data-focus="${esc(x.id)}"><div class="main"><div class="t">${esc(x.que)}</div>
+    <div class="m">${acuChip(x)}${acuProfe(x)?`<span>${esc(acuProfe(x))}</span>`:''}${x.asignatura?`<span>${esc(x.asignatura)}</span>`:''}${x.fecha?`<span class="date">Para el ${esc(fmt(x.fecha))}</span>${x.estado==='pendiente'?`<span class="${venc?'late':''}">${venc?'venció ':''}${esc(rel(x.fecha))}</span>`:''}`:''}${AMB.grado?ambChip(x.ambito):''}</div>
+    ${dt||R.length||q?`<div class="m">${dt?`<span>Lo dijo ${esc(dt)}</span>`:''}${R.length?`<span>${R.length===1?`Se lo recordaste el ${esc(fmt(R[0]))}`:`Se lo has recordado ${R.length} veces · la última, el ${esc(fmt(R[R.length-1]))}`}</span>`:''}${q?`<span>Queja: <a href="#incidencias" data-act="go" data-t="incidencias" data-id="${esc(q.id)}" data-state='{"view":"tablero"}'>${esc(q.titulo)}</a></span>`:''}</div>`:''}
+    ${x.notas?`<p class="small muted" style="margin:4px 0 0;white-space:pre-wrap">${esc(x.notas)}</p>`:''}
+    ${canWrite?`<div class="row" style="margin-top:8px">${x.estado==='pendiente'?`${venc?`<button class="btn sm primary" data-act="acuRec" data-id="${esc(x.id)}">Preparar recordatorio</button>`:''}<button class="btn sm" data-act="acuSet" data-id="${esc(x.id)}" data-v="cumplido">Cumplido</button>${venc?`<button class="btn ghost sm" data-act="acuSet" data-id="${esc(x.id)}" data-v="incumplido">No lo ha cumplido</button>`:`<button class="btn ghost sm" data-act="acuRec" data-id="${esc(x.id)}">Recordárselo</button>`}`:`<button class="btn ghost sm" data-act="acuSet" data-id="${esc(x.id)}" data-v="pendiente">Reabrir</button>`}<button class="btn ghost sm" data-act="edit" data-col="compromisos" data-id="${esc(x.id)}">Editar</button></div>`:''}</div></div>`;
+}
+function qSegs(v){const n=acuVencidos().length;return [['tablero','Tablero'],['acuerdos','Acuerdos'+(n?` · ${n} ${n===1?'vencido':'vencidos'}`:'')],['informe','Informe']].map(([k,l])=>`<button data-act="kview" data-v="${k}" aria-pressed="${v===k}">${esc(l)}</button>`).join('')}
+function qSegsPaint(){const s=document.querySelector('#mod .head .seg');if(s&&tab==='incidencias')s.innerHTML=qSegs(MODS.incidencias.state.view)}
+function acuRender(root){
+  root.innerHTML=`<div class="head"><div><div class="kicker">Quejas · acuerdos con el profesorado</div><h2>Acuerdos con <em>el profesorado</em></h2><p class="lead">Lo que os promete un profesor en una tutoría, en clase o en una reunión, y para cuándo. Si llega la fecha y no se ha cumplido, el portal te avisa y te prepara el correo para recordárselo.</p></div>
+    <div class="row"><div class="seg" role="group" aria-label="Vista">${qSegs('acuerdos')}</div>${canWrite?'<button class="btn primary" data-act="newItem" data-col="compromisos">+ Acuerdo</button>':''}</div></div>
+    <div id="ed"></div><div id="slot-acu"></div>`;
+  acuPaint();
+}
+function acuPaint(){
+  const s=$('slot-acu');if(!s)return;if(!ready()){s.innerHTML=loadingHTML();return}
+  const L=vis(D.compromisos);
+  if(!L.length){s.innerHTML=`<div class="list"><div class="empty"><b>Todavía no has apuntado ningún acuerdo</b>Cuando un profesor se comprometa a algo (publicar las notas, subir las prácticas, cambiar una fecha), apúntalo aquí con la fecha. Si no lo cumple, el portal te avisa y te prepara el correo para recordárselo.</div></div>`;return}
+  const ord=(a,b)=>String(a.fecha||'9').localeCompare(b.fecha||'9'),rev=(a,b)=>ord(b,a);
+  const G=[['Vencidos sin cumplir',L.filter(acuVencido).sort(ord)],['Pendientes',L.filter(x=>x.estado==='pendiente'&&!acuVencido(x)).sort(ord)],['Cumplidos',L.filter(x=>x.estado==='cumplido').sort(rev)],['No cumplidos',L.filter(x=>x.estado==='incumplido').sort(rev)]];
+  s.innerHTML=G.filter(g=>g[1].length).map(([lab,arr],i)=>`<div class="kicker" style="margin:${i?18:4}px 0 8px">${esc(lab)} · ${arr.length}</div><div class="list">${arr.map(acuItemHTML).join('')}</div>`).join('');
+}
+/* la vista de acuerdos va dentro de Quejas */
+(function(){
+  const M=MODS.incidencias,_r=M.render,_f=M.refresh,_c=M.card;
+  M.render=function(root){
+    if(this.state.view==='acuerdos'){acuRender(root);return}
+    _r.call(this,root);qSegsPaint();
+  };
+  M.refresh=function(){if(this.state.view==='acuerdos')acuPaint();else _f.call(this);qSegsPaint()};
+  /* en cada queja abierta: los acuerdos que salen de ella y el botón para apuntar uno */
+  M.card=function(i,ci){
+    let h=_c.call(this,i,ci);
+    if(!OPEN.has(i.id))return h;
+    const A=D.compromisos.filter(x=>x.incidencia===i.id);
+    if(A.length)h=h.replace('<div class="row"><button class="btn sm" data-act="edit"',`<p><b>Acuerdos:</b> ${A.map(x=>`<a href="#incidencias" data-act="go" data-t="incidencias" data-id="${esc(x.id)}" data-state='{"view":"acuerdos"}'>${esc(x.que)}</a> (${esc(x.estado==='pendiente'?(acuVencido(x)?'vencido':'pendiente'):x.estado==='cumplido'?'cumplido':'no cumplido')})`).join(' · ')}</p><div class="row"><button class="btn sm" data-act="edit"`);
+    if(canWrite)h=h.replace('<button class="btn sm" data-act="go" data-t="redactar"',`<button class="btn sm" data-act="acuNew" data-id="${esc(i.id)}">+ Acuerdo</button><button class="btn sm" data-act="go" data-t="redactar"`);
+    return h;
+  };
+})();
+/* si se va a una queja (o a apuntar una) desde otra pestaña, se enseña el tablero; si es un acuerdo, los acuerdos */
+{const _st=setTab;setTab=function(t,opts){
+  if(t==='incidencias'){const o=opts||{},s=o.state||{};if(!s.view&&(o.open||s.newPrefill))MODS.incidencias.state.view=o.open&&D.compromisos.some(x=>x.id===o.open)?'acuerdos':'tablero'}
+  return _st.apply(this,arguments);
+}}
+ACT.acuNew=el=>{
+  const i=D.incidencias.find(x=>x.id===el.dataset.id),p=i&&i.asignatura?profeDe(i.asignatura):null;
+  openEditor('compromisos',null,Object.assign({ambito:i&&i.ambito||'curso',incidencia:i?i.id:''},i&&i.asignatura?{asignatura:i.asignatura}:{},p?{contacto:p.id}:{}));
+};
+ACT.acuNewAs=el=>openEditor('compromisos',null,Object.assign({ambito:'curso',asignatura:el.dataset.asig||''},el.dataset.c?{contacto:el.dataset.c}:{}));
+ACT.acuSet=async el=>{const v=el.dataset.v;if(await patch('compromisos',el.dataset.id,{estado:v,cerrado:v==='pendiente'?null:Date.now(),actualizado:Date.now()}))toast(v==='cumplido'?'Marcado como cumplido':v==='incumplido'?'Marcado como no cumplido':'Vuelve a estar pendiente')};
+ACT.acuRec=el=>{
+  const x=D.compromisos.find(y=>y.id===el.dataset.id);if(!x)return;
+  const c=contact(x.contacto)||(x.asignatura?profeDe(x.asignatura):null);
+  setTab('redactar',{state:{view:'plantillas',tpl:'acuerdo',normPrefill:{acu:x.id,dest:c?c.id:'',extra:''}}});
+  if(!c)toast('Elige a quién va el correo: este acuerdo no tiene profesor');
+};
+/* en la ficha de cada asignatura */
+asComHTML=function(com,n,p){
+  return `<div class="row" style="justify-content:space-between;margin-top:8px"><h3>Acuerdos con el profesorado</h3>${canWrite?`<button class="btn sm" data-act="acuNewAs" data-asig="${esc(n)}"${p?` data-c="${esc(p.id)}"`:''}>+ Acuerdo</button>`:''}</div>
+    ${com.length?`<div class="list">${com.slice().sort((a,b)=>(acuVencido(b)-acuVencido(a))||((a.estado==='pendiente'?0:1)-(b.estado==='pendiente'?0:1))||String(a.fecha||'9').localeCompare(b.fecha||'9')).map(c=>`<div class="it click" data-act="go" data-t="incidencias" data-id="${esc(c.id)}" data-state='{"view":"acuerdos"}'><div class="main"><div class="t">${esc(c.que)}</div><div class="m">${acuChip(c)}${c.fecha?`<span class="date">Para el ${esc(fmt(c.fecha))}</span>`:''}</div></div></div>`).join('')}</div>`
+    :'<p class="small muted" style="margin:0">Si el profesor os promete algo (fechas de notas, prácticas, cambios), apúntalo aquí: el portal te avisa si llega la fecha y no se ha cumplido.</p>'}`;
+};
+/* ---------- plantilla para recordar un acuerdo ---------- */
+TPLS.acuerdo={group:'Profesorado',name:'Recordar un acuerdo',desc:'Lo que prometió un profesor y no ha llegado',kind:'mail',
+  fields:[{k:'acu',label:'Acuerdo',type:'acuerdo',wide:true},{k:'dest',label:'Profesor/a',type:'contacto'},{k:'extra',label:'Qué necesitáis ahora (opcional)',type:'text',wide:true,ph:'saber al menos una fecha aproximada'}],
+  build(v){
+    const a=D.compromisos.find(x=>x.id===v.acu)||null,c=contact(v.dest)||(a?contact(a.contacto):null);
+    const que=a?String(a.que).trim().replace(/\.$/,''):'[lo que os prometió]';
+    const dia=s=>fmtDay(s).replace(',','');
+    const lugar={'En una tutoría':'la tutoría','En clase':'la clase','En una reunión':'la reunión','Por correo':'su correo'}[a&&a.donde]||'';
+    const cuando=a&&parse(a.dicho)?(lugar?`En ${lugar} del ${dia(a.dicho)}`:`El ${dia(a.dicho)}`):({'En una tutoría':'En una tutoría reciente','En clase':'En una clase reciente','En una reunión':'En una reunión reciente','Por correo':'En un correo reciente'}[a&&a.donde]||'Hace unos días');
+    const para=a&&parse(a.fecha)?` para el ${dia(a.fecha)}`:'';
+    const paso=!!(a&&a.fecha&&a.fecha<today());
+    const amb=a&&AMB[a.ambito]?a.ambito:'curso';
+    const ex=String(v.extra||'').trim().replace(/\.$/,'');
+    const body=`${saludo(c,v.tono)}\n\n${presenta(amb)} ${cuando} quedamos en lo siguiente${para}: «${que}».\n\n${paso?'Como todavía no tenemos noticias, se lo recuerdo por si se le ha pasado.':'Se lo recuerdo para que la clase pueda organizarse.'}${ex?` En concreto, necesitaríamos ${ex}.`:''} ${paso?'¿Podría decirnos cómo va?':'¿Podría confirmarnos si sigue en pie?'}\n\nMuchas gracias.\n\n${firmaTxt(amb,v.tono)}`;
+    const corto=que.length>70?que.slice(0,68)+'…':que;
+    return {mail:{to:(c&&c.email)||'',subject:`Recordatorio: ${corto}${a&&a.asignatura?' – '+a.asignatura:''}`,body}};
+  }};
+/* el campo «Acuerdo» de la plantilla es un desplegable con los pendientes */
+(function(){
+  const R=MODS.redactar,_fi=R.fields;
+  R.fields=function(){
+    let h=_fi.call(this);
+    if(this.state.tpl==='acuerdo'){
+      const v=(this.state.v.acuerdo||{}).acu||'',L=D.compromisos.filter(x=>x.estado==='pendiente'||x.id===v).sort((a,b)=>(acuVencido(b)-acuVencido(a))||String(a.fecha||'9').localeCompare(b.fecha||'9'));
+      h=h.replace(/<input id="r-acu"[^>]*>/,`<select id="r-acu" data-rf="acu"><option value="">${L.length?'Elige el acuerdo':'No hay acuerdos pendientes: apúntalos en Quejas → Acuerdos'}</option>${L.map(x=>`<option value="${esc(x.id)}"${x.id===v?' selected':''}>${esc(x.fecha?fmt(x.fecha):'Sin fecha')}${acuVencido(x)?' (vencido)':''} · ${esc(acuProfe(x)||'Sin profesor')} · ${esc(x.que)}</option>`).join('')}</select>`);
+    }
+    return h;
+  };
+})();
+/* al elegir el acuerdo, el correo va a su profesor */
+document.addEventListener('change',e=>{
+  if(!e.target||e.target.id!=='r-acu')return;
+  const x=D.compromisos.find(y=>y.id===e.target.value),d=$('r-dest');if(!x||!d)return;
+  const p=contact(x.contacto)||(x.asignatura?profeDe(x.asignatura):null);
+  if(p&&[...d.options].some(o=>o.value===p.id)){d.value=p.id;const st=MODS.redactar.state;(st.v.acuerdo=st.v.acuerdo||{}).dest=p.id;MODS.redactar.output()}
+});
+/* al registrar el recordatorio como enviado, se apunta también en el acuerdo */
+(function(){
+  const _ms=ACT.mailSent;
+  ACT.mailSent=async el=>{
+    const R=MODS.redactar,acu=R.state.tpl==='acuerdo'?D.compromisos.find(x=>x.id===R.values().acu):null;
+    if(acu){
+      const m=R.cur&&R.cur.mail,subj=($('m-subj')&&$('m-subj').textContent!=='—')?$('m-subj').textContent:(m&&m.subject||'');
+      if(m&&D.enviados.some(x=>x.fecha===today()&&x.plantilla===TPLS.acuerdo.name&&x.asunto===subj&&x.para===(m.to||''))){toast('Este recordatorio ya estaba registrado hoy');return}
+      if(acu.asignatura){const v=R.state.v.acuerdo=R.state.v.acuerdo||{};v.asig=acu.asignatura}
+    }
+    await _ms(el);
+    if(acu){const rec=acuRecs(acu).filter(d=>d!==today()).concat([today()]);await patch('compromisos',acu.id,{recordatorios:rec,actualizado:Date.now()})}
+  };
+})();
+/* ===== Portal de clase · primeros pasos: lo que conviene dejar hecho el primer día. Desaparece al marcarlo como listo ===== */
+const PS={busy:false,prompt:null};
+function pasosApp(){try{return ['standalone','fullscreen','minimal-ui'].some(m=>matchMedia(`(display-mode: ${m})`).matches)||navigator.standalone===true}catch(e){return false}}
+function pasosSO(){const u=navigator.userAgent||'';if(/iPhone|iPad|iPod/i.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1))return 'ios';if(/Android/i.test(u))return 'android';return 'pc'}
+/* el aviso de instalar de Chrome se guarda para el botón «Instalar» mientras se vean los primeros pasos */
+window.addEventListener('beforeinstallprompt',e=>{if(CFG.pasosFin||(CFG.pasos||{}).app||pasosApp())return;e.preventDefault();PS.prompt=e;pasosPaint()});
+window.addEventListener('appinstalled',()=>{PS.prompt=null;if(!(CFG.pasos||{}).app)pasoMarca('app')});
+function pasoMarca(k){return saveCfg({pasos:Object.assign({},CFG.pasos||{},{[k]:1})}).then(ok=>{pasosPaint();return ok})}
+function pasosLista(){
+  const L=LOCALAPI(),P=CFG.pasos||{},out=[],t=today();
+  /* 1. los exámenes oficiales de tu curso, en tu calendario */
+  const ord=exMios().filter(x=>x.per!=='jun');
+  if(ord.some(x=>x.f>=t)){
+    const falta=ord.filter(x=>!exEnCal(x)).length;
+    out.push({k:'examenes',ok:ord.filter(x=>x.f>=t).every(exEnCal),t:'Añade los exámenes oficiales a tu calendario',
+      txt:'Así cuentan en el termómetro de carga y el portal vigila los plazos de notas y de revisión.',hecho:'Ya están en tu calendario.',
+      btns:`${canWrite?`<button class="btn sm primary" data-act="pasoEx"${PS.busy?' disabled':''}>${PS.busy?'Añadiendo…':`Añadirlos (${falta})`}</button>`:''}<button class="btn ghost sm" data-act="go" data-t="calendario" data-state='{"view":"escuela"}'>Verlos</button>`});
+  }
+  if(L){
+    /* 2. contraseña */
+    const pw=L.hasPassword();
+    out.push({k:'clave',ok:pw,t:'Ponle contraseña al portal',
+      txt:'Tus datos se guardan cifrados en este navegador y el portal te la pide al abrirlo. Hace falta para la copia compartida con tu compañero.',hecho:'Tus datos están cifrados en este navegador.',
+      btns:'<button class="btn sm primary" data-act="pasoIr" data-f="aj-pass">Ponerla</button>'});
+    /* 3. el compañero (delegado o subdelegado) */
+    const con=!!L.sync.status().connected;
+    out.push({k:'companero',ok:con||!!P.companero,t:'Conéctate con tu compañero',
+      txt:`Delegado y subdelegado podéis ver y cambiar las mismas quejas, exámenes y correos con una copia cifrada: uno la crea con su GitHub y le pasa un código al otro.${pw?'':' Antes, pon la contraseña.'}`,
+      hecho:con?'Compartís la misma copia cifrada.':'Sin copia compartida. Si un día la necesitas, está en Ajustes.',
+      btns:`<button class="btn sm${pw?' primary':''}" data-act="pasoIr" data-f="aj-sync">Conectar</button><button class="btn ghost sm" data-act="pasoOk" data-k="companero">No lo necesito</button>`});
+  }
+  /* 4. el portal en el móvil, como una app: los pasos de Android y de iPhone, uno al lado del otro (primero el de tu móvil) */
+  const app=pasosApp(),so=pasosSO(),pc=so==='pc',url=location.href.split('#')[0];
+  const AND=`<div class="sobox"><b>Android · Chrome</b><ol class="steps"><li>Abre el portal en <b>Chrome</b>.</li><li>Toca el menú <b>⋮</b> (arriba a la derecha).</li><li>Elige <b>Instalar aplicación</b> (o <b>Añadir a pantalla de inicio</b>) y confirma.</li></ol></div>`;
+  const IOS=`<div class="sobox"><b>iPhone · Safari</b><ol class="steps"><li>Abre el portal en <b>Safari</b>.</li><li>Toca <b>Compartir</b> (el cuadrado con una flecha hacia arriba; si no lo ves, está en el menú <b>···</b>).</li><li>Elige <b>Añadir a pantalla de inicio</b> y pulsa <b>Añadir</b>.</li></ol><p class="small muted">Ojo: en iPhone, la app no ve lo que guardaste en Safari. Si ya usabas el portal allí, en la app conéctate a la copia compartida o restaura una copia de seguridad.</p></div>`;
+  out.push({k:'app',ok:app||!!P.app,t:'Instala el portal en el móvil como una app',
+    txt:'Se abre desde la pantalla de inicio, a pantalla completa, y funciona sin conexión.',hecho:app?'Lo estás usando como app.':'Hecho.',
+    extra:`${pc?`<p class="small">Abre esta dirección en tu móvil: <span class="url" id="paso-url">${esc(url)}</span></p>`:''}<div class="sos">${so==='ios'?IOS+AND:AND+IOS}</div>`,
+    btns:`${PS.prompt?`<button class="btn sm primary" data-act="pasoInstalar">${pc?'Instalar en este ordenador':'Instalar ahora'}</button>`:''}${pc?'<button class="btn sm" data-act="pasoLink">Copiar la dirección</button>':''}<button class="btn ghost sm" data-act="pasoOk" data-k="app">Ya lo tengo</button>`});
+  return out;
+}
+function pasoHTML(s,i){
+  return `<li class="paso${s.ok?' ok':''}" data-paso="${s.k}"><span class="pn" aria-hidden="true">${s.ok?'✓':i+1}</span><div class="main"><b>${esc(s.t)}</b>${s.ok?`<span class="small muted">${esc(s.hecho)}</span>`:`<p class="small muted">${esc(s.txt)}</p>${s.extra||''}<div class="row">${s.btns}</div>`}</div></li>`;
+}
+function pasosHTML(){
+  if(CFG.pasosFin||!perfilOk()||!ready())return '';
+  const L=pasosLista(),n=L.filter(s=>s.ok).length;
+  if(n===L.length)return `<section class="panel pasosp done" aria-label="Primeros pasos"><div class="row" style="justify-content:space-between;gap:12px"><div><div class="kicker">Primeros pasos · ${n} de ${L.length}</div><h3 style="margin:4px 0 0">Ya está todo listo</h3><p class="small muted" style="margin:4px 0 0">Tu portal está preparado. Si algún día necesitas estos pasos otra vez, están en Ajustes.</p></div><button class="btn primary" data-act="pasosFin">Listo, ocultar</button></div></section>`;
+  return `<section class="panel pasosp" aria-labelledby="pasos-h"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="kicker">Primeros pasos · ${n} de ${L.length}</div><h3 id="pasos-h" style="margin:4px 0 0">Deja el portal listo el primer día</h3></div><button class="btn ghost sm" data-act="pasosFin">Listo, ocultar</button></div>
+    <div class="pbar" role="progressbar" aria-label="Pasos hechos" aria-valuemin="0" aria-valuemax="${L.length}" aria-valuenow="${n}"><i style="width:${Math.round(n/L.length*100)}%"></i></div>
+    <ol class="pasos">${L.map(pasoHTML).join('')}</ol></section>`;
+}
+function pasosPaint(){const s=$('slot-pasos');if(s)s.innerHTML=pasosHTML()}
+ACT.pasosFin=async()=>{if(await saveCfg({pasosFin:1})){pasosPaint();toast('Primeros pasos ocultos. Si los necesitas, están en Ajustes.')}};
+ACT.pasosVer=async()=>{if(await saveCfg({pasosFin:0}))setTab('inicio')};
+ACT.pasoOk=el=>pasoMarca(el.dataset.k);
+ACT.pasoIr=el=>{AJ.foco=el.dataset.f;setTab('ajustes')};
+ACT.pasoLink=()=>copyText(location.href.split('#')[0],$('paso-url'));
+ACT.pasoEx=async()=>{
+  if(PS.busy)return;const L=exMios().filter(x=>x.per!=='jun'&&!exEnCal(x));if(!L.length)return;
+  PS.busy=true;pasosPaint();let n=0;
+  try{for(const x of L)if(await exAdd(x))n++}finally{PS.busy=false;pasosPaint()}
+  toast(n?`${n} ${n===1?'examen añadido':'exámenes añadidos'} a tu calendario`:'No se ha podido añadir');
+};
+ACT.pasoInstalar=async()=>{
+  const e=PS.prompt;if(!e)return;PS.prompt=null;
+  try{await e.prompt();const r=await e.userChoice;if(r&&r.outcome==='accepted'){await pasoMarca('app');toast('Instalado: ya lo tienes como app')}}catch(err){}
+  pasosPaint();
+};
+/* en Ajustes, para volver a verlos */
+{const _ad=ajDatosHTML;ajDatosHTML=function(){return _ad()+(CFG.pasosFin?'<p class="small" style="margin:0"><a href="#inicio" data-act="pasosVer">Ver otra vez los primeros pasos</a></p>':'')}}
 /* ===== arranque ===== */
 init();
 
